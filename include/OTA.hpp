@@ -5,17 +5,9 @@
 #include "cert.hpp"
 #include <HomeSpan.h>
 
-#define URL_fw_Version "https://raw.githubusercontent.com/oleksiikutuzov/esp32-homekit-air-quality/V4.0/bin_version.txt"
-
-#if HARDWARE_VER == 4
-#define URL_fw_Bin "https://raw.githubusercontent.com/oleksiikutuzov/esp32-homekit-air-quality/V4.0/esp32_air_quality_v4.bin"
-#else
-#define URL_fw_Bin "https://raw.githubusercontent.com/oleksiikutuzov/esp32-homekit-air-quality/V4.0/esp32_air_quality_v3.bin"
-#endif
-#define FW_VERSION "1.4.3"
-
 String FirmwareVer = {
-	FW_VERSION};
+	FW_VERSION
+};
 
 void firmwareUpdate();
 int	 FirmwareVersionCheck();
@@ -39,7 +31,7 @@ void repeatedCall() {
 void firmwareUpdate(void) {
 	WiFiClientSecure client;
 	client.setCACert(rootCACertificate);
-	t_httpUpdate_return ret = httpUpdate.update(client, URL_fw_Bin);
+	t_httpUpdate_return ret = httpUpdate.update(client, OTA_BIN_URL);
 
 	switch (ret) {
 	case HTTP_UPDATE_FAILED:
@@ -60,7 +52,7 @@ int FirmwareVersionCheck(void) {
 	String payload;
 	int	   httpCode;
 	String fwurl = "";
-	fwurl += URL_fw_Version;
+	fwurl += OTA_VERSION_URL;
 	fwurl += "?";
 	fwurl += String(rand());
 	Serial.println(fwurl);

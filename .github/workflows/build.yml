@@ -1,65 +1,61 @@
 name: PlatformIO Build
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  build_v3:
+  build:
 
-    name: Build V3
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
     - name: Cache pip
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
     - name: Cache PlatformIO
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.platformio
         key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
     - name: Install PlatformIO
       run: |
         python -m pip install --upgrade pip
         pip install --upgrade platformio
     - name: Run PlatformIO
-      run: pio run -e esp32dev_v3
-
-  build_v4:
-
-    name: Build V4
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
+      run: pio run
+    - name: Upload Builds
+      uses: actions/upload-artifact@v3
       with:
-        submodules: recursive
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v2
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
+        path: ./*.bin
+
+    - name: Get version
+      id: get_version
       run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
-    - name: Run PlatformIO
-      run: pio run -e esp32dev_v4
-      
+        echo "VERSION=v$(cat bin_version.txt)" >> $GITHUB_ENV
+
+    - name: Create and push tag
+      run: |
+        git tag -f ${{ env.VERSION }}
+        git push -f origin ${{ env.VERSION }}
+
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        prerelease: false
+        automatic_release_tag: ${{ env.VERSION }}
+        title: ${{ env.VERSION }}
+        files: |
+          bin_version.txt
+          *.bin

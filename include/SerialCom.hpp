@@ -5,9 +5,6 @@
 #include "Types.hpp"
 
 namespace SerialCom {
-	constexpr static const uint8_t PIN_UART_RX = 14; // D2 on Wemos D1 Mini
-	constexpr static const uint8_t PIN_UART_TX = 23; // UNUSED
-
 	SoftwareSerial sensorSerial(PIN_UART_RX, PIN_UART_TX);
 
 	uint8_t serialRxBuf[255];
