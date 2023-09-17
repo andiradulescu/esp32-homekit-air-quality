@@ -1,3 +1,14 @@
+/*********************************************************************************************\
+ * IKEA VINDRIKTNING PM2.5 particle concentration sensor
+ *
+ * This sensor uses a subset of the PM1006K LED particle sensor
+ * readData code was taken from xsns_91_vindriktning.ino -> bool VindriktningReadData(void)
+ * IKEA vindriktning particle concentration sensor support for Tasmota
+ * https://github.com/arendst/Tasmota/blob/master/tasmota/tasmota_xsns_sensor/xsns_91_vindriktning.ino
+ *
+ * Copyright (C) 2021  Marcel Ritter and Theo Arends
+\*********************************************************************************************/
+
 #pragma once
 
 #include <SoftwareSerial.h>
@@ -5,106 +16,48 @@
 #include "Types.hpp"
 
 namespace SerialCom {
-	SoftwareSerial sensorSerial(PIN_UART_RX, PIN_UART_TX);
-
-	uint8_t serialRxBuf[255];
-	uint8_t rxBufIdx = 0;
+	SoftwareSerial vindriktningSerial(PIN_UART_RX, PIN_UART_TX);
 
 	void setup() {
-		sensorSerial.begin(9600);
+		vindriktningSerial.begin(9600);
 	}
 
-	void clearRxBuf() {
-		// Clear everything for the next message
-		memset(serialRxBuf, 0, sizeof(serialRxBuf));
-		rxBufIdx = 0;
-	}
-
-	void parseState(particleSensorState_t &state) {
-		/**
-		 *         MSB  DF 3     DF 4  LSB
-		 * uint16_t = xxxxxxxx xxxxxxxx
-		 */
-		const uint16_t pm25 = (serialRxBuf[5] << 8) | serialRxBuf[6];
-
-		Serial.printf("Received PM 2.5 reading: %d\n", pm25);
-
-		state.measurements[state.measurementIdx] = pm25;
-
-		state.measurementIdx = (state.measurementIdx + 1) % 5;
-
-		if (state.measurementIdx == 0) {
-			float avgPM25 = 0.0f;
-
-			for (uint8_t i = 0; i < 5; ++i) {
-				avgPM25 += state.measurements[i] / 5.0f;
-			}
-
-			state.avgPM25 = avgPM25;
-			state.valid	  = true;
-
-			Serial.printf("New Avg PM25: %d\n", state.avgPM25);
+	bool readData(Vindriktning &vindriktning) {
+		if (!vindriktningSerial.available()) {
+			return false;
+		}
+		while ((vindriktningSerial.peek() != 0x16) && vindriktningSerial.available()) {
+			vindriktningSerial.read();
+		}
+		if (vindriktningSerial.available() < VINDRIKTNING_DATASET_SIZE) {
+			return false;
 		}
 
-		clearRxBuf();
-	}
+		uint8_t buffer[VINDRIKTNING_DATASET_SIZE];
+		vindriktningSerial.readBytes(buffer, VINDRIKTNING_DATASET_SIZE);
+		vindriktningSerial.flush();  // Make room for another burst
 
-	bool isValidHeader() {
-		bool headerValid = serialRxBuf[0] == 0x16 && serialRxBuf[1] == 0x11 && serialRxBuf[2] == 0x0B;
-
-		if (!headerValid) {
-			Serial.println("Received message with invalid header.");
+		uint8_t crc = 0;
+		for (uint32_t i = 0; i < VINDRIKTNING_DATASET_SIZE; i++) {
+			crc += buffer[i];
+		}
+		if (crc != 0) {
+			Serial.printf("Received message with invalid checksum. Expected: 0. Actual: %d\n", crc);
+			return false;
 		}
 
-		return headerValid;
-	}
+		// sample data:
+		//  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19
+		// 16 11 0b 00 00 00 0c 00 00 03 cb 00 00 00 0c 01 00 00 00 e7
+		//               |pm2_5|     |pm1_0|     |pm10 |        | CRC |
+		vindriktning.pm2_5 = (buffer[5] << 8) | buffer[6];
+		vindriktning.pm1_0 = (buffer[9] << 8) | buffer[10];
+		vindriktning.pm10 = (buffer[13] << 8) | buffer[14];
 
-	bool isValidChecksum() {
-		uint8_t checksum = 0;
+		Serial.printf("Received PM 2.5 reading: %d\n", vindriktning.pm2_5);
+		Serial.printf("Received PM 1.0 reading: %d\n", vindriktning.pm1_0);
+		Serial.printf("Received PM 10 reading: %d\n", vindriktning.pm10);
 
-		for (uint8_t i = 0; i < 20; i++) {
-			checksum += serialRxBuf[i];
-		}
-
-		if (checksum != 0) {
-			Serial.printf("Received message with invalid checksum. Expected: 0. Actual: %d\n", checksum);
-		}
-
-		return checksum == 0;
-	}
-
-	void handleUart(particleSensorState_t &state) {
-		if (!sensorSerial.available()) {
-			return;
-		}
-
-		Serial.print("Receiving:");
-		while (sensorSerial.available()) {
-			serialRxBuf[rxBufIdx++] = sensorSerial.read();
-			Serial.print(".");
-
-			// Without this delay, receiving data breaks for reasons that are beyond me
-			delay(15);
-
-			if (rxBufIdx >= 64) {
-				clearRxBuf();
-			}
-		}
-		Serial.println("Done.");
-
-		if (isValidHeader() && isValidChecksum()) {
-			parseState(state);
-
-			Serial.printf(
-				"Current measurements: %d, %d, %d, %d, %d\n",
-
-				state.measurements[0],
-				state.measurements[1],
-				state.measurements[2],
-				state.measurements[3],
-				state.measurements[4]);
-		} else {
-			clearRxBuf();
-		}
+		return true;
 	}
 } // namespace SerialCom
