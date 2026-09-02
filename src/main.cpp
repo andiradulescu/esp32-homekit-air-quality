@@ -68,7 +68,6 @@ void setup() {
 	homeSpan.setPortNum(88);								   // change port number for HomeSpan so we can use port 80 for the Web Server
 	homeSpan.setStatusAutoOff(10);							   // turn off status led after 10 seconds of inactivity
 	homeSpan.setWifiCallback(setupWeb);						   // need to start Web Server after WiFi is established
-	homeSpan.reserveSocketConnections(3);					   // reserve 3 socket connections for Web Server
 	homeSpan.enableWebLog(10, "pool.ntp.org", "UTC", "myLog"); // enable Web Log
 	homeSpan.enableAutoStartAP();							   // enable auto start AP
 	homeSpan.setSketchVersion(fw_ver);
