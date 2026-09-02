@@ -54,9 +54,9 @@ namespace SerialCom {
 		vindriktning.pm1_0 = (buffer[9] << 8) | buffer[10];
 		vindriktning.pm10 = (buffer[13] << 8) | buffer[14];
 
-		Serial.printf("Received PM 2.5 reading: %d\n", vindriktning.pm2_5);
-		Serial.printf("Received PM 1.0 reading: %d\n", vindriktning.pm1_0);
-		Serial.printf("Received PM 10 reading: %d\n", vindriktning.pm10);
+		Serial.printf("PM 2.5 reading: %d\n", vindriktning.pm2_5);
+		Serial.printf("PM 1.0 reading: %d\n", vindriktning.pm1_0);
+		Serial.printf("PM 10 reading: %d\n", vindriktning.pm10);
 
 		return true;
 	}
