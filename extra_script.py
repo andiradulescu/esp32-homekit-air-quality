@@ -8,6 +8,8 @@ def move_bin(*args, **kwargs):
         copyfile(target, 'esp32_air_quality.bin')
     elif target == ".pio/build/esp32c3/firmware.bin":
         copyfile(target, 'esp32c3_air_quality.bin')
+    elif target == ".pio/build/esp32lite/firmware.bin":
+        copyfile(target, 'lolin32_lite_air_quality.bin')
     print("Done.")
 
 env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", move_bin)   #post action for .bin
