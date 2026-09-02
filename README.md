@@ -1,5 +1,5 @@
 # ESP32 HomeKit Air Quality Sensor
-Native Apple HomeKit via ESP32 for the IKEA VINDRIKTNING PM2.5 Air Quality sensor
+Native Apple HomeKit via ESP32 for the IKEA VINDRIKTNING PM2.5 Air Quality sensor, with optional Sensirion SCD40 CO2 measurements.
 
 [![PlatformIO Build](../../actions/workflows/build.yml/badge.svg)](../../actions/workflows/build.yml)
 
@@ -11,7 +11,8 @@ _As usual, don't expect any warranties. I am just a hobbyist, not a professional
 
 ## Prerequisites
 
-- NodeMCU ESP32 board: ESP32-WROOM or ESP32-C3-12F. More boards can be added in [platformio.ini](./platformio.ini).
+- NodeMCU ESP32 board: ESP32-WROOM or ESP32-C3-12F for the PM-only firmware, or WEMOS LOLIN32 Lite for the SCD40 build. More boards can be added in [platformio.ini](./platformio.ini).
+- Optional Sensirion SCD40 breakout board for CO2 measurements
 - Some short cables
 - A soldering iron
 - A long PH0 Screwdriver
@@ -28,9 +29,27 @@ To reach the original PCB from IKEA, we need to unscrew the four visible screws 
 As you can see in this image, you'll need to solder wires to GND (black), 5V (red), and the Testpoint that is connected to the TX of the
 Particle Sensor (lighter green). Additionally, you need to solder the cable to one of the pins of the microcontroller (darker green) to be able to read the values from the built-in light sensor.
 
+### Optional SCD40
+
+The `esp32lite` PlatformIO environment enables the SCD40 over I2C on these pins:
+
+| SCD40 signal | WEMOS LOLIN32 Lite |
+| --- | --- |
+| SDA | GPIO23 |
+| SCL | GPIO19 |
+
+Connect power and ground according to the requirements of your SCD40 breakout board. The other build environments do not create a HomeKit CO2 service.
+
 ## Software
 
 The firmware can be built and flashed using PlatformIO.
+
+Build and upload the SCD40 variant with:
+
+```sh
+pio run -e esp32lite
+pio run -e esp32lite -t upload
+```
 
 The web server update was implemented. You can flash binary at `http://[DEVICE IP]/update`.
 There is a reboot link. Opening `http://[DEVICE IP]/reboot` will force the device to reboot.
@@ -50,7 +69,9 @@ A list of settings variables is in the sketch. You can adjust the values up to y
 
 ## Prometheus metrics
 
-The firmware creates a simple HTTP server to share the metrics to the Prometheus host server. The update interval is 10 seconds, the same as for the HomeKit data. Is available at the `http://DEVICE_IP/metrics` default port is `80`.
+The firmware creates a simple HTTP server to share the metrics to the Prometheus host server. The update interval is 10 seconds, the same as for the HomeKit data. It is available at `http://DEVICE_IP/metrics` on port `80`.
+
+The `esp32lite` build also exports the current CO2 level, peak CO2 level, and CO2 detection state.
 
 Installation guides for Raspberry Pi 4: [Grafana](https://pimylifeup.com/raspberry-pi-grafana/), [Prometheus](https://pimylifeup.com/raspberry-pi-prometheus/).
 
